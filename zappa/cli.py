@@ -35,7 +35,7 @@ import zipfile
 from click.exceptions import ClickException
 from dateutil import parser
 from datetime import datetime,timedelta
-from zappa import Zappa, logger, API_GATEWAY_REGIONS
+from zappa.zappa import Zappa, logger, API_GATEWAY_REGIONS
 from util import (check_new_version_available, detect_django_settings,
                   detect_flask_apps, parse_s3_url)
 

@@ -196,6 +196,8 @@ ZIP_EXCLUDES = [
     '*.hg', '*.egg-info', 'pip', 'docutils*', 'setuputils*'
 ]
 
+RUN_TIMES = ['python2.7', 'python3.4']
+
 ##
 # Classes
 ##
@@ -244,6 +246,7 @@ class Zappa(object):
 
     boto_session = None
     credentials_arn = None
+    runtime = 'python2.7' #can also be 'python3.4' on aws
 
     def __init__(self, boto_session=None, profile_name=None, aws_region=None, load_credentials=True):
         # Set aws_region to None to use the system's region instead
@@ -315,6 +318,8 @@ class Zappa(object):
         if not venv:
             if 'VIRTUAL_ENV' in os.environ:
                 venv = os.environ['VIRTUAL_ENV']
+                if os.sys.version_info.major == 3:
+                    self.runtime = 'python3.4'
             elif os.path.exists('.python-version'):  # pragma: no cover
                 logger.debug("Pyenv's local virtualenv detected.")
                 try:
@@ -327,6 +332,8 @@ class Zappa(object):
                     logger.debug('env name = {}'.format(env_name))
                 bin_path = subprocess.check_output(['pyenv', 'which', 'python']).decode('utf-8')
                 venv = bin_path[:bin_path.rfind(env_name)] + env_name
+                if 'versions/3.' in env_name:
+                    self.runtime = 'python3.4'
                 logger.debug('env path = {}'.format(venv))
             else:  # pragma: no cover
                 print("Zappa requires an active virtual environment.")
@@ -377,7 +384,7 @@ class Zappa(object):
         if os.sys.platform == 'win32':
             site_packages = os.path.join(venv, 'Lib', 'site-packages')
         else:
-            site_packages = os.path.join(venv, 'lib', 'python2.7', 'site-packages')
+            site_packages = os.path.join(venv, 'lib', self.runtime, 'site-packages')
         if minify:
             excludes = ZIP_EXCLUDES + exclude
             copytree(site_packages, temp_package_path, symlinks=False, ignore=shutil.ignore_patterns(*excludes))
@@ -385,7 +392,7 @@ class Zappa(object):
             copytree(site_packages, temp_package_path, symlinks=False)
 
         # We may have 64-bin specific packages too.
-        site_packages_64 = os.path.join(venv, 'lib64', 'python2.7', 'site-packages')
+        site_packages_64 = os.path.join(venv, 'lib64', self.runtime, 'site-packages')
         if os.path.exists(site_packages_64):
             if minify:
                 excludes = ZIP_EXCLUDES + exclude
@@ -612,7 +619,7 @@ class Zappa(object):
 
         response = self.lambda_client.create_function(
             FunctionName=function_name,
-            Runtime='python2.7',
+            Runtime=self.runtime,
             Role=self.credentials_arn,
             Handler=handler,
             Code={
@@ -657,7 +664,7 @@ class Zappa(object):
 
         response = self.lambda_client.update_function_configuration(
             FunctionName=function_name,
-            Runtime='python2.7',
+            Runtime=self.runtime,
             Role=self.credentials_arn,
             Handler=handler,
             Description=description,
